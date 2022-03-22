@@ -1,0 +1,3 @@
+rootProject.name = 'sistema-medicion-calidad'
+include 'sensor'
+
