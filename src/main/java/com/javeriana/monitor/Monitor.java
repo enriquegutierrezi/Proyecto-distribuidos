@@ -1,9 +1,9 @@
 package com.javeriana.monitor;
 
-import com.javeriana.publish_subscribe.models.MonitorType;
-import com.javeriana.shared.exceptions.SentObject;
-import com.javeriana.shared.models.AlarmObject;
-import com.javeriana.shared.models.SensorType;
+import com.javeriana.publish_subscribe.models.MonitorDTO;
+import com.javeriana.shared.models.TopicDTO;
+import com.javeriana.shared.models.AlarmDTO;
+import com.javeriana.shared.models.SensorTopic;
 import com.javeriana.shared.utils.SharedUtils;
 import org.apache.commons.lang3.SerializationUtils;
 
@@ -22,11 +22,12 @@ public class Monitor {
 
     public static void main(String[] args) {
         String type = args[0];
-        List<MonitorType> monitors = SharedUtils.initMonitors();
+        List<MonitorDTO> monitors = SharedUtils.initMonitors();
         DatagramSocket socket;
         DatagramPacket packet;
 
-        int port = MonitorType.findPortByType(monitors, type);
+        MonitorDTO monitor = MonitorDTO.findMonitorByTopic(monitors, type);
+        int port = monitor.getPort();
 
         try {
             socket = new DatagramSocket(port);
@@ -36,7 +37,7 @@ public class Monitor {
 
             while (true) {
                 socket.receive(packet);
-                SentObject object = SerializationUtils.deserialize(packet.getData());
+                TopicDTO object = SerializationUtils.deserialize(packet.getData());
                 CompletableFuture.runAsync(() -> processData(type, object)).join();
             }
         } catch (IOException e) {
@@ -44,26 +45,28 @@ public class Monitor {
         }
     }
 
-    private static void processData(String type, SentObject object) {
-        SensorType sensorType = SensorType.getByType(type);
-        System.out.printf("Recibiendo información de sensor de ip %s de tipo %s%n", object.getSensorIp(), object.getType());
-        System.out.printf("\tEl dato recibido es: %d%n", object.getNumber());
-        checkData(object.getNumber(), sensorType, object);
+    private static void processData(String type, TopicDTO topic) {
+        SensorTopic sensorTopic = SensorTopic.getByTopic(type);
+        System.out.printf("Recibiendo información de sensor de ip %s de tipo %s%n", topic.getSensorIp(), topic.getTopic());
+        System.out.printf("\tEl dato recibido es: %d%n", topic.getNumber());
+        checkData(sensorTopic, topic);
     }
 
-    private static void checkData(int data, SensorType type, SentObject object) {
+    private static void checkData(SensorTopic type, TopicDTO topic) {
+        int data = topic.getNumber();
         if (data < type.getLowerBound() || data > type.getUpperBound()) {
             System.out.printf("Hay un fallo en la medición del número: %d%n", data);
-            sendData(object, object.getSensorIp(), data);
+            // sendAlarm(topic, topic.getSensorIp());
         }
     }
 
-    private static void sendData(SentObject object, String ip, int data) {
+    private static void sendAlarm(TopicDTO topic, String ip) {
+        int data = topic.getNumber();
         try {
             ServerSocket s = new ServerSocket(0);
             DatagramSocket clientSocket = new DatagramSocket(s.getLocalPort());
-            AlarmObject alarmObject = AlarmObject.createAlarmObjectFromSentObject(object, data, ip);
-            byte[] byteArray = SerializationUtils.serialize(alarmObject);
+            AlarmDTO alarmDTO = AlarmDTO.createAlarmFromTopic(topic, data, ip);
+            byte[] byteArray = SerializationUtils.serialize(alarmDTO);
             DatagramPacket packet =
                     new DatagramPacket(
                             byteArray,

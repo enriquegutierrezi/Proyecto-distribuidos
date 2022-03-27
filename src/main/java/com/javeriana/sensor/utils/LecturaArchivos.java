@@ -1,6 +1,6 @@
 package com.javeriana.sensor.utils;
 
-import com.javeriana.sensor.models.Valores;
+import com.javeriana.sensor.models.PercentageValues;
 import com.javeriana.shared.exceptions.BusinessRuleException;
 
 import java.io.BufferedReader;
@@ -9,7 +9,7 @@ import java.io.IOException;
 
 public class LecturaArchivos {
 
-    public static Valores readConfigFile(String fileName) throws IOException {
+    public static PercentageValues readConfigFile(String fileName) throws IOException {
         FileReader fr = new FileReader(fileName);
         BufferedReader br = new BufferedReader(fr);
 
@@ -21,11 +21,11 @@ public class LecturaArchivos {
             throw new BusinessRuleException("La suma de los valores del archivo de configuración es mayor a uno");
         }
 
-        return Valores
+        return PercentageValues
                 .builder()
-                .correctos(validos)
-                .fueraDeRango(fueraDeRango)
-                .errores(errores)
+                .valid(validos)
+                .outOfRange(fueraDeRango)
+                .errors(errores)
                 .build();
     }
 
