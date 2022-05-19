@@ -15,8 +15,8 @@ import java.util.List;
 public class MonitorDTO {
     private int pos;
     private String topic;
-    private byte[] mainIp;
-    private byte[] secondaryIp;
+    private String mainIp;
+    private String secondaryIp;
     private int port;
 
     public static MonitorDTO findMonitorByTopic(List<MonitorDTO> monitors, String type) {

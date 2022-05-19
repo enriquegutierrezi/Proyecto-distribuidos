@@ -1,23 +1,23 @@
 package com.javeriana.monitor;
 
 import com.javeriana.publish_subscribe.models.MonitorDTO;
-import com.javeriana.shared.models.TopicDTO;
 import com.javeriana.shared.models.AlarmDTO;
 import com.javeriana.shared.models.SensorTopic;
+import com.javeriana.shared.models.TopicDTO;
 import com.javeriana.shared.utils.SharedUtils;
 import org.apache.commons.lang3.SerializationUtils;
+import org.zeromq.ZMQ;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class Monitor {
     static final int MAX_LENGTH_BUFFER = 1024;
     static final byte[] IP_SERVER = new byte[]{127, 0, 0, 1};
+    static final String STRING_IP_SERVER = "127.0.0.1";
     static final int SYSTEM_PORT = 4990;
 
     public static void main(String[] args) {
@@ -31,7 +31,8 @@ public class Monitor {
 
         try {
             socket = new DatagramSocket(port);
-            System.out.println("Escuchando por el puerto: " + port);
+            System.out.println("Escuchando por el puerto: " + port + "\n");
+            System.out.printf("Monitor de: %s%n", type);
             byte[] buf = new byte[MAX_LENGTH_BUFFER];
             packet = new DatagramPacket(buf, buf.length);
 
@@ -56,27 +57,29 @@ public class Monitor {
         int data = topic.getNumber();
         if (data < type.getLowerBound() || data > type.getUpperBound()) {
             System.out.printf("Hay un fallo en la medición del número: %d%n", data);
-            // sendAlarm(topic, topic.getSensorIp());
+            sendAlarm(topic, topic.getSensorIp());
         }
     }
 
     private static void sendAlarm(TopicDTO topic, String ip) {
+
         int data = topic.getNumber();
-        try {
-            ServerSocket s = new ServerSocket(0);
-            DatagramSocket clientSocket = new DatagramSocket(s.getLocalPort());
-            AlarmDTO alarmDTO = AlarmDTO.createAlarmFromTopic(topic, data, ip);
-            byte[] byteArray = SerializationUtils.serialize(alarmDTO);
-            DatagramPacket packet =
-                    new DatagramPacket(
-                            byteArray,
-                            byteArray.length,
-                            InetAddress.getByAddress(IP_SERVER),
-                            SYSTEM_PORT);
-            clientSocket.send(packet);
-            clientSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        ZMQ.Context context = ZMQ.context(1);
+
+        System.out.println("Enviando alarma\n");
+
+        AlarmDTO alarmDTO = AlarmDTO.createAlarmFromTopic(topic, data, ip);
+        byte[] byteArray = SerializationUtils.serialize(alarmDTO);
+
+        ZMQ.Socket requester = context.socket(ZMQ.REQ);
+
+        String serverIp = String.format("tcp://%s:%d", STRING_IP_SERVER, SYSTEM_PORT);
+
+        requester.connect(serverIp);
+
+        requester.send(byteArray, 0);
+
+        requester.close();
+        context.term();
     }
 }

@@ -5,6 +5,10 @@ import com.javeriana.publish_subscribe.models.MonitorDTO;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.UnknownHostException;
 import java.util.List;
 
 import static org.apache.commons.codec.binary.Base64.decodeBase64;
@@ -51,31 +55,50 @@ public class SharedUtils {
         return new String(decrypted);
     }
 
+    public static String getLocalIp() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static List<MonitorDTO> initMonitors() {
         MonitorDTO ph = MonitorDTO.builder()
                 .pos(0)
                 .topic("PH")
                 .port(4982)
-                .mainIp(new byte[]{127, 0, 0, 1})
-                .secondaryIp(new byte[]{127, 0, 0, 1})
+                .mainIp("192.168.5.124")
+                .secondaryIp("192.168.5.124")
                 .build();
 
         MonitorDTO oxigeno = MonitorDTO.builder()
                 .pos(1)
                 .topic("Oxigeno")
                 .port(4983)
-                .mainIp(new byte[]{127, 0, 0, 1})
-                .secondaryIp(new byte[]{127, 0, 0, 1})
+                .mainIp("192.168.5.124")
+                .secondaryIp("192.168.5.124")
                 .build();
 
         MonitorDTO temperatura = MonitorDTO.builder()
                 .pos(2)
                 .topic("Temperatura")
                 .port(4984)
-                .mainIp(new byte[]{127, 0, 0, 1})
-                .secondaryIp(new byte[]{127, 0, 0, 1})
+                .mainIp("192.168.5.124")
+                .secondaryIp("192.168.5.124")
                 .build();
 
         return List.of(ph, oxigeno, temperatura);
+    }
+
+    public static boolean serverListening(String host, int port) {
+        try (ServerSocket serverSocket = new ServerSocket()) {
+            // serverSocket.setReuseAddress(false);
+            serverSocket.bind(new InetSocketAddress(InetAddress.getByName(host), port), 1);
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
     }
 }

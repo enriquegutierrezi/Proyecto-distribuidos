@@ -2,14 +2,13 @@ package com.javeriana.sensor;
 
 import com.javeriana.sensor.models.PercentageValues;
 import com.javeriana.sensor.utils.LecturaArchivos;
-import com.javeriana.shared.models.TopicDTO;
 import com.javeriana.shared.models.SensorTopic;
+import com.javeriana.shared.models.TopicDTO;
+import com.javeriana.shared.utils.SharedUtils;
 import org.apache.commons.lang3.SerializationUtils;
+import org.zeromq.ZMQ;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -19,40 +18,49 @@ import java.util.stream.IntStream;
 
 public class Sensor {
     static final byte[] IP_SERVER = new byte[]{127, 0, 0, 1};
+    static final String STRING_IP_SERVER = "127.0.0.1";
     static final int PORT = 4980;
 
     public static void main(String[] args) throws IOException {
-        DatagramSocket clientSocket;
-
         String filePath = String.format("src/main/resources/%s", args[2]);
         PercentageValues percentageValues = LecturaArchivos.readConfigFile(filePath);
         SensorTopic sensorTopic = SensorTopic.getByTopic(args[0]);
         int time = Integer.parseInt(args[1]);
 
-        List<Integer> generatedNumbers = generateRandomNumbers(percentageValues, sensorTopic);
-        System.out.println(generatedNumbers);
+        while (true) {
+            List<Integer> generatedNumbers = generateRandomNumbers(percentageValues, sensorTopic);
+            System.out.println(generatedNumbers);
 
-        clientSocket = new DatagramSocket(4981);
-
-        generatedNumbers
-                .stream()
-                .filter(number -> number > 0)
-                .map(number -> TopicDTO.builder()
-                        .number(number)
-                        .sensorIp(clientSocket.getLocalAddress().getHostAddress())
-                        .topic(sensorTopic.getType())
-                        .build())
-                .map(SerializationUtils::serialize)
-                .forEach(byteArray -> publish(byteArray, clientSocket, time));
-        clientSocket.close();
+            generatedNumbers
+                    .stream()
+                    .filter(number -> number > 0)
+                    .map(number -> TopicDTO.builder()
+                            .number(number)
+                            .sensorIp(SharedUtils.getLocalIp())
+                            .topic(sensorTopic.getType())
+                            .build())
+                    .map(SerializationUtils::serialize)
+                    .forEach(byteArray -> publish(byteArray, time));
+        }
     }
 
-    private static void publish(byte[] byteArray, DatagramSocket clientSocket, int time) {
+    private static void publish(byte[] byteArray, int time) {
         try {
-            DatagramPacket packet = new DatagramPacket(byteArray, byteArray.length, InetAddress.getByAddress(IP_SERVER), PORT);
-            clientSocket.send(packet);
+            ZMQ.Context context = ZMQ.context(1);
+
+            System.out.println("Enviando numero\n");
+            ZMQ.Socket requester = context.socket(ZMQ.REQ);
+
+            String serverIp = String.format("tcp://%s:%d", STRING_IP_SERVER, PORT);
+
+            requester.connect(serverIp);
+
+            requester.send(byteArray, 0);
+
+            requester.close();
+            context.term();
             TimeUnit.SECONDS.sleep(time);
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }

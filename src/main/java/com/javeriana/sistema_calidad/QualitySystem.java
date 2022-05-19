@@ -2,10 +2,9 @@ package com.javeriana.sistema_calidad;
 
 import com.javeriana.shared.models.AlarmDTO;
 import org.apache.commons.lang3.SerializationUtils;
+import org.zeromq.ZContext;
+import org.zeromq.ZMQ;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.util.concurrent.CompletableFuture;
 
 public class QualitySystem {
@@ -15,22 +14,20 @@ public class QualitySystem {
     static final int PORT = 4990;
 
     public static void main(String[] args) {
-        DatagramSocket socket;
-        DatagramPacket packet;
-
-        try {
-            socket = new DatagramSocket(PORT);
+        try (ZContext context = new ZContext()) {
+            ZMQ.Socket socket = context.createSocket(ZMQ.REP);
+            System.out.println("Imprimiendo socket: " + socket);
             System.out.println("Escuchando por el puerto: " + PORT);
-            byte[] buf = new byte[MAX_LENGTH_BUFFER];
-            packet = new DatagramPacket(buf, buf.length);
 
-            while (true) {
-                socket.receive(packet);
-                AlarmDTO object = SerializationUtils.deserialize(packet.getData());
-                CompletableFuture.runAsync(() -> processData(object));
+            String localIp = String.format("tcp://*:%d", PORT);
+
+            socket.bind(localIp);
+
+            while (!Thread.currentThread().isInterrupted()) {
+                byte[] reply = socket.recv(0);
+                AlarmDTO object = SerializationUtils.deserialize(reply);
+                CompletableFuture.runAsync(() -> processData(object)).join();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
