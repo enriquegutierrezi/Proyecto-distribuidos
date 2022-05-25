@@ -22,7 +22,7 @@ import java.util.concurrent.CompletableFuture;
 public class Monitor {
     static final int MAX_LENGTH_BUFFER = 1024;
     static final byte[] IP_SERVER = new byte[]{127, 0, 0, 1};
-    static final String STRING_IP_SERVER = "192.168.5.106";
+    static final String STRING_IP_SERVER = "192.168.5.114";
     static final int SYSTEM_PORT = 4990;
 
     public static void main(String[] args) {

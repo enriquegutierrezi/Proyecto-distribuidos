@@ -76,15 +76,15 @@ public class ComparisonTests {
     private static void calculateDifferences(List<Integer> sensorResults, List<Integer> monitorResults,
                                              List<Integer> systemResults, String topic) {
         System.out.printf("Sensor de %s%n", topic);
-        int diffSensorMonitor = findDifference(sensorResults, monitorResults);
+        int diffSensorMonitor = sensorResults.size() - monitorResults.size();
         double percentageSensorMonitor = diffSensorMonitor > 0 ? (diffSensorMonitor * 100.0) / sensorResults.size() : 0;
 
         System.out.printf("La perdida de información entre el sensor y el monitor es de %.2f%%%n", percentageSensorMonitor);
 
-        int diffMonitorSystem = findDifference(monitorResults, systemResults);
+        int diffMonitorSystem = monitorResults.size() - systemResults.size();
         double percentageMonitorSystem = diffMonitorSystem > 0 ? (diffMonitorSystem * 100.0) / monitorResults.size() : 0;
 
-        System.out.printf("El porcentaje de alarmas enviadas por el monitor al sistema es de %.2f%%%n", percentageMonitorSystem);
+        System.out.printf("El porcentaje de alarmas no enviadas por el monitor al sistema es de %.2f%%%n", percentageMonitorSystem);
 
         System.out.println("-------------------------------------------------------------------------------------");
 
