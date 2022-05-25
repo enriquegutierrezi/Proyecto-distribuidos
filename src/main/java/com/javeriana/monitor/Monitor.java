@@ -1,5 +1,6 @@
 package com.javeriana.monitor;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.javeriana.publish_subscribe.models.MonitorDTO;
 import com.javeriana.shared.models.AlarmDTO;
 import com.javeriana.shared.models.SensorTopic;
@@ -11,6 +12,11 @@ import org.zeromq.ZMQ;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -50,6 +56,7 @@ public class Monitor {
         SensorTopic sensorTopic = SensorTopic.getByTopic(type);
         System.out.printf("Recibiendo información de sensor de ip %s de tipo %s%n", topic.getSensorIp(), topic.getTopic());
         System.out.printf("\tEl dato recibido es: %d%n", topic.getNumber());
+        sendDataToFirebase(topic);
         checkData(sensorTopic, topic);
     }
 
@@ -57,7 +64,33 @@ public class Monitor {
         int data = topic.getNumber();
         if (data < type.getLowerBound() || data > type.getUpperBound()) {
             System.out.printf("Hay un fallo en la medición del número: %d%n", data);
-            sendAlarm(topic, topic.getSensorIp());
+            if (SharedUtils.serverListening(STRING_IP_SERVER, SYSTEM_PORT))
+                sendAlarm(topic, topic.getSensorIp());
+            else
+                System.out.println("No hay usuario activo en el sistema de calidad");
+        }
+    }
+
+    private static void sendDataToFirebase(TopicDTO topicDTO) {
+        try {
+            var values = new HashMap<String, String>() {{
+                put("value", String.valueOf(topicDTO.getNumber()));
+            }};
+
+            var objectMapper = new ObjectMapper();
+            String requestBody = objectMapper
+                    .writeValueAsString(values);
+            String uri = String.format("https://sistema-sensores-75536-default-rtdb.firebaseio.com/sistema/monitores/%s.json", topicDTO.getTopic());
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(uri))
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<Void> response = client.send(request,
+                    HttpResponse.BodyHandlers.discarding());
+        } catch (InterruptedException | IOException e) {
+            e.printStackTrace();
         }
     }
 

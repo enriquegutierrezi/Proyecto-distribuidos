@@ -69,24 +69,24 @@ public class SharedUtils {
                 .pos(0)
                 .topic("PH")
                 .port(4982)
-                .mainIp("192.168.5.124")
-                .secondaryIp("192.168.5.124")
+                .mainIp("192.168.5.109")
+                .secondaryIp("192.168.5.109")
                 .build();
 
         MonitorDTO oxigeno = MonitorDTO.builder()
                 .pos(1)
                 .topic("Oxigeno")
                 .port(4983)
-                .mainIp("192.168.5.124")
-                .secondaryIp("192.168.5.124")
+                .mainIp("192.168.5.109")
+                .secondaryIp("192.168.5.109")
                 .build();
 
         MonitorDTO temperatura = MonitorDTO.builder()
                 .pos(2)
                 .topic("Temperatura")
                 .port(4984)
-                .mainIp("192.168.5.124")
-                .secondaryIp("192.168.5.124")
+                .mainIp("192.168.5.109")
+                .secondaryIp("192.168.5.109")
                 .build();
 
         return List.of(ph, oxigeno, temperatura);

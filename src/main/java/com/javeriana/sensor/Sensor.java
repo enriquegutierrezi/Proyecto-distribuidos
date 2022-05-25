@@ -1,5 +1,6 @@
 package com.javeriana.sensor;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.javeriana.sensor.models.PercentageValues;
 import com.javeriana.sensor.utils.LecturaArchivos;
 import com.javeriana.shared.models.SensorTopic;
@@ -9,8 +10,13 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.zeromq.ZMQ;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -39,13 +45,13 @@ public class Sensor {
                             .sensorIp(SharedUtils.getLocalIp())
                             .topic(sensorTopic.getType())
                             .build())
-                    .map(SerializationUtils::serialize)
-                    .forEach(byteArray -> publish(byteArray, time));
+                    .forEach(topicDTO -> publish(topicDTO, time));
         }
     }
 
-    private static void publish(byte[] byteArray, int time) {
+    private static void publish(TopicDTO topicDTO, int time) {
         try {
+            byte[] byteArray = SerializationUtils.serialize(topicDTO);
             ZMQ.Context context = ZMQ.context(1);
 
             System.out.println("Enviando numero\n");
@@ -57,10 +63,34 @@ public class Sensor {
 
             requester.send(byteArray, 0);
 
+            sendDataToFirebase(topicDTO);
             requester.close();
             context.term();
             TimeUnit.SECONDS.sleep(time);
         } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void sendDataToFirebase(TopicDTO topicDTO) {
+        try {
+            var values = new HashMap<String, String>() {{
+                put("value", String.valueOf(topicDTO.getNumber()));
+            }};
+
+            var objectMapper = new ObjectMapper();
+            String requestBody = objectMapper
+                    .writeValueAsString(values);
+            String uri = String.format("https://sistema-sensores-75536-default-rtdb.firebaseio.com/sistema/sensores/%s.json", topicDTO.getTopic());
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(uri))
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<Void> response = client.send(request,
+                    HttpResponse.BodyHandlers.discarding());
+        } catch (InterruptedException | IOException e) {
             e.printStackTrace();
         }
     }
