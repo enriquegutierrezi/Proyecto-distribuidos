@@ -7,11 +7,10 @@ import com.javeriana.shared.models.SensorTopic;
 import com.javeriana.shared.models.TopicDTO;
 import com.javeriana.shared.utils.SharedUtils;
 import org.apache.commons.lang3.SerializationUtils;
+import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -23,32 +22,32 @@ import java.util.concurrent.CompletableFuture;
 public class Monitor {
     static final int MAX_LENGTH_BUFFER = 1024;
     static final byte[] IP_SERVER = new byte[]{127, 0, 0, 1};
-    static final String STRING_IP_SERVER = "127.0.0.1";
+    static final String STRING_IP_SERVER = "192.168.5.106";
     static final int SYSTEM_PORT = 4990;
 
     public static void main(String[] args) {
         String type = args[0];
         List<MonitorDTO> monitors = SharedUtils.initMonitors();
-        DatagramSocket socket;
-        DatagramPacket packet;
 
         MonitorDTO monitor = MonitorDTO.findMonitorByTopic(monitors, type);
         int port = monitor.getPort();
 
-        try {
-            socket = new DatagramSocket(port);
-            System.out.println("Escuchando por el puerto: " + port + "\n");
-            System.out.printf("Monitor de: %s%n", type);
-            byte[] buf = new byte[MAX_LENGTH_BUFFER];
-            packet = new DatagramPacket(buf, buf.length);
+        try (ZContext context = new ZContext()) {
+            ZMQ.Socket socket = context.createSocket(ZMQ.REP);
+            System.out.println("Imprimiendo socket: " + socket);
+            System.out.println("Escuchando por el puerto: " + port);
 
-            while (true) {
-                socket.receive(packet);
-                TopicDTO object = SerializationUtils.deserialize(packet.getData());
+            System.out.printf("Monitor de: %s%n", type);
+
+            String localIp = String.format("tcp://*:%d", port);
+
+            socket.bind(localIp);
+
+            while (!Thread.currentThread().isInterrupted()) {
+                byte[] reply = socket.recv(0);
+                TopicDTO object = SerializationUtils.deserialize(reply);
                 CompletableFuture.runAsync(() -> processData(type, object)).join();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 

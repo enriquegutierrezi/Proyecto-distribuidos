@@ -24,7 +24,7 @@ import java.util.stream.IntStream;
 
 public class Sensor {
     static final byte[] IP_SERVER = new byte[]{127, 0, 0, 1};
-    static final String STRING_IP_SERVER = "127.0.0.1";
+    static final String STRING_IP_SERVER = "192.168.5.114";
     static final int PORT = 4980;
 
     public static void main(String[] args) throws IOException {

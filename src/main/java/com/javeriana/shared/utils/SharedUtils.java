@@ -7,7 +7,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.List;
 
@@ -69,33 +69,33 @@ public class SharedUtils {
                 .pos(0)
                 .topic("PH")
                 .port(4982)
-                .mainIp("192.168.5.109")
-                .secondaryIp("192.168.5.109")
+                .mainIp("192.168.5.114")
+                .secondaryIp("192.168.5.106")
                 .build();
 
         MonitorDTO oxigeno = MonitorDTO.builder()
                 .pos(1)
                 .topic("Oxigeno")
                 .port(4983)
-                .mainIp("192.168.5.109")
-                .secondaryIp("192.168.5.109")
+                .mainIp("192.168.5.106")
+                .secondaryIp("192.168.5.114")
                 .build();
 
         MonitorDTO temperatura = MonitorDTO.builder()
                 .pos(2)
                 .topic("Temperatura")
                 .port(4984)
-                .mainIp("192.168.5.109")
-                .secondaryIp("192.168.5.109")
+                .mainIp("192.168.5.114")
+                .secondaryIp("192.168.5.106")
                 .build();
 
         return List.of(ph, oxigeno, temperatura);
     }
 
     public static boolean serverListening(String host, int port) {
-        try (ServerSocket serverSocket = new ServerSocket()) {
+        try (Socket serverSocket = new Socket()) {
             // serverSocket.setReuseAddress(false);
-            serverSocket.bind(new InetSocketAddress(InetAddress.getByName(host), port), 1);
+            serverSocket.connect(new InetSocketAddress(InetAddress.getByName(host), port), 1);
             return true;
         } catch (Exception ex) {
             return false;

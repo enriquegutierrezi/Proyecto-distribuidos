@@ -7,11 +7,6 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -56,22 +51,21 @@ public class PublishSubscribeBroker {
     }
 
     private static void sendData(MonitorDTO monitor, String monitorIp, TopicDTO object) {
-        try {
-            ServerSocket s = new ServerSocket(0);
-            System.out.printf("Enviando a monitor de tipo %s con ip %s%n", monitor.getTopic(), monitorIp);
-            DatagramSocket clientSocket = new DatagramSocket(s.getLocalPort());
-            byte[] byteArray = SerializationUtils.serialize(object);
-            DatagramPacket packet =
-                    new DatagramPacket(
-                            byteArray,
-                            byteArray.length,
-                            InetAddress.getByName(monitorIp),
-                            monitor.getPort());
-            clientSocket.send(packet);
-            clientSocket.close();
-            s.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
+        System.out.printf("Enviando a monitor de tipo %s con ip %s%n", monitor.getTopic(), monitorIp);
+        byte[] byteArray = SerializationUtils.serialize(object);
+        ZMQ.Context context = ZMQ.context(1);
+
+        System.out.println("Enviando numero\n");
+        ZMQ.Socket requester = context.socket(ZMQ.REQ);
+
+        String serverIp = String.format("tcp://%s:%d", monitorIp, monitor.getPort());
+
+        requester.connect(serverIp);
+
+        requester.send(byteArray, 0);
+
+        requester.close();
+        context.term();
     }
 }
